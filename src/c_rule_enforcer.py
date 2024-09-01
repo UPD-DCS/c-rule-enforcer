@@ -58,7 +58,7 @@ Please try again.
 
 
 def get_rule_violations_str(src: bytes, rules: Rules) -> str | None:
-    if violations := sorted({*get_rule_violations(src, rules)}):
+    if violations := sorted(get_unique_rule_violations(src, rules)):
         return ENFORCER_ERROR_TEMPLATE.format(
             errors="\n".join(f'* {violation}' for violation in violations))
 
