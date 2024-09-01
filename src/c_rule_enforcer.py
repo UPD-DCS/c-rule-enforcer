@@ -272,7 +272,7 @@ def handle_disallow_symbols(tree: Tree, src: bytes,
         if node.type == 'identifier':
             symbol = src[node.start_byte:node.end_byte]
 
-            if s := symbol.decode('utf8') in disallowed_symbols:
+            if (s := symbol.decode('utf8')) in disallowed_symbols:
                 yield f'`{s}` is disallowed.'
 
         for child in node.children:
