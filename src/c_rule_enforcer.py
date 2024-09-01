@@ -1,5 +1,5 @@
 import re
-from typing import Any, Generator, Self
+from typing import Any, Generator
 from dataclasses import dataclass
 
 import tree_sitter_c as tsc
@@ -36,7 +36,7 @@ class Rules:
     limit_defined_functions: int | None
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Self:
+    def from_dict(cls, d: dict[str, Any]):
         return cls(
             require_includes=d.get('require_includes', None),
             allow_includes=d.get('allow_includes', None),
