@@ -38,11 +38,11 @@ class Rules:
     @classmethod
     def from_dict(cls, d: dict[str, Any]):
         return cls(
-            require_includes=d.get('require_includes', None),
-            allow_includes=d.get('allow_includes', None),
-            require_functions=d.get('require_functions', None),
-            disallow=d.get('disallow', None),
-            disallow_symbols=d.get('disallow_symbols', None),
+            require_includes=list(d.get('require_includes', None)),
+            allow_includes=list(d.get('allow_includes', None)),
+            require_functions=list(d.get('require_functions', None)),
+            disallow=list(d.get('disallow', None)),
+            disallow_symbols=list(d.get('disallow_symbols', None)),
             limit_source_bytes=d.get('limit_source_bytes', None),
             limit_defined_functions=d.get('limit_defined_functions', None),
         )
