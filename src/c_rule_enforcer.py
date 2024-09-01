@@ -11,7 +11,7 @@ class Rules:
     require_includes: list[str] | None
     """
     allow_includes = None: All includes allowed
-    allow_includes = []: No includes allowed (except requireed_includes)
+    allow_includes = []: No includes allowed (except required_includes)
     """
     allow_includes: list[str] | None
     require_functions: list[str] | None
