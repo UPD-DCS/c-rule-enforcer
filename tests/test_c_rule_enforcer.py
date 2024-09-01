@@ -6,7 +6,7 @@ def test_disallow_main():
 
     violating_cases = [
         b'''
-int main_MANGLED() {
+int main() {
 }
 ''',
     ]
@@ -15,6 +15,10 @@ int main_MANGLED() {
         b'''
 int hello() {
     return 32;
+}
+''',
+        b'''
+int main_MANGLED() {
 }
 ''',
     ]

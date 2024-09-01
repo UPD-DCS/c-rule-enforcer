@@ -37,12 +37,15 @@ class Rules:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]):
+        def list_or_none(value: Any):
+            return list(value) if value is not None else None
+
         return cls(
-            require_includes=list(d.get('require_includes', None)),
-            allow_includes=list(d.get('allow_includes', None)),
-            require_functions=list(d.get('require_functions', None)),
-            disallow=list(d.get('disallow', None)),
-            disallow_symbols=list(d.get('disallow_symbols', None)),
+            require_includes=list_or_none(d.get('require_includes', None)),
+            allow_includes=list_or_none(d.get('allow_includes', None)),
+            require_functions=list_or_none(d.get('require_functions', None)),
+            disallow=list_or_none(d.get('disallow', None)),
+            disallow_symbols=list_or_none(d.get('disallow_symbols', None)),
             limit_source_bytes=d.get('limit_source_bytes', None),
             limit_defined_functions=d.get('limit_defined_functions', None),
         )
@@ -143,8 +146,8 @@ def handle_disallow_main(tree: Tree, src: bytes) -> Generator[str, None, None]:
                 if child.type == 'identifier':
                     identifier = src[child.start_byte:child.end_byte]
 
-                    # Check for mangled version of `main`
-                    if identifier.startswith(b'main_'):
+                    # Sourced checked is unmangled version; main has no UUID suffix
+                    if identifier == b'main':
                         yield 'Including a `main` function is disallowed.'
                         break
         else:
