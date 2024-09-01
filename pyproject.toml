@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "c-rule-enforcer"
+version = "0.1.0"
+description = ""
+authors = ["Juan Felipe Coronel <juanfelipe.coronel@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+tree-sitter = "^0.23.0"
+tree-sitter-c = "^0.21.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".",
+  "src",
+]
