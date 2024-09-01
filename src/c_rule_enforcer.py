@@ -296,7 +296,7 @@ def handle_limit_defined_functions(tree: Tree, limit: int) -> Generator[str, Non
             total += 1
 
             if total > limit:
-                yield f'Too many defined functions; at most {limit} functions can be defined.'
+                yield f'Too many defined functions; at most {limit} function{"" if limit == 1 else "s"} can be defined.'
 
         for child in node.children:
             yield from recurse_on_node(child)
