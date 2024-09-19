@@ -71,6 +71,9 @@ def get_rule_violations(src: bytes, rules: Rules) -> Generator[str, None, None]:
     parser = Parser(C_LANGUAGE)
     tree = parser.parse(src)
 
+    # TODO: Make into rule (temporary default behavior)
+    yield from handle_disallow_dunders(tree, src)
+
     if rules.disallow:
         yield from handle_disallow(src, tree, rules.disallow, rules.require_functions)
 
@@ -267,6 +270,21 @@ def handle_disallow_direct_recursion(tree: Tree, src: bytes) -> Generator[str, N
             yield from recurse_on_node(child, inside_function)
 
     yield from recurse_on_node(tree.root_node, None)
+
+
+def handle_disallow_dunders(tree: Tree, src: bytes) -> Generator[str, None, None]:
+    def recurse_on_node(node: Node) -> Generator[str, None, None]:
+        if node.type == 'identifier':
+            symbol = src[node.start_byte:node.end_byte]
+
+            if (s := symbol.decode('utf8')).startswith('__'):
+                yield f'`{s}` is disallowed.'
+
+        for child in node.children:
+            yield from recurse_on_node(child)
+
+    yield from recurse_on_node(tree.root_node)
+
 
 
 def handle_disallow_symbols(tree: Tree, src: bytes,
