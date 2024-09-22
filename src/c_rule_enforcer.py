@@ -30,6 +30,7 @@ class Rules:
     - function_pointers
     - atypical_control_flow
     - braceless_blocks
+    - asm
     """
     disallow: list[str] | None
     disallow_symbols: list[str] | None
@@ -147,6 +148,9 @@ def handle_disallow(src: bytes, tree: Tree, disallowed: list[str],
 
     if 'braceless_blocks' in disallowed:
         yield from handle_disallow_braceless_blocks(tree)
+
+    if 'asm' in disallowed:
+        yield from handle_disallow_asm(tree)
 
     # TODO
     if 'function_pointers' in disallowed:
@@ -493,6 +497,17 @@ def handle_require_functions(tree: Tree, src: bytes,
     for function_name in set(required_functions):
         if function_name in functions_left:
             yield f'The function `{function_name}` must be defined.'
+
+
+def handle_disallow_asm(tree: Tree) -> Generator[str, None, None]:
+    def recurse_on_node(node: Node) -> Generator[str, None, None]:
+        if node.type == 'gnu_asm_expression':
+            yield '`asm` is disallowed.'
+
+        for child in node.children:
+            yield from recurse_on_node(child)
+
+    yield from recurse_on_node(tree.root_node)
 
 
 def main():

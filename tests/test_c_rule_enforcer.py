@@ -1512,3 +1512,38 @@ int main() {
         assert not get_unique_rule_violations(src, rules)
 
 
+def test_disallow_asm():
+    rules = Rules.from_dict({'disallow': ['asm']})
+
+    violating_cases = [
+        b'''
+int main() {
+    asm ("syscall");
+    __asm__ ("syscall");
+}
+''',
+        b'''
+int main() {
+    asm ("syscall");
+}
+''',
+        b'''
+int main() {
+    __asm__ ("syscall");
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+int asm() {
+    return 1;
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
