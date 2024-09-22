@@ -76,6 +76,9 @@ def get_rule_violations(src: bytes, rules: Rules) -> Generator[str, None, None]:
     # TODO: Make into rule (temporary default behavior)
     yield from handle_disallow_dunders(tree, src)
 
+    if rules.require_functions:
+        yield from handle_require_functions(tree, src, rules.require_functions)
+
     if rules.disallow:
         yield from handle_disallow(src, tree, rules.disallow, rules.require_functions)
 
@@ -464,6 +467,32 @@ def handle_disallow_braceless_blocks(tree: Tree) -> Generator[str, None, None]:
             yield from recurse_on_node(child)
 
     yield from recurse_on_node(tree.root_node)
+
+
+def handle_require_functions(tree: Tree, src: bytes,
+                             required_functions: list[str] | None) -> Generator[str, None, None]:
+    if required_functions is None:
+        return
+
+    functions_left = set(required_functions)
+
+    def recurse_on_node(node: Node):
+        if node.type == 'function_declarator':
+            for child in node.children:
+                if child.type == 'identifier':
+                    identifier = src[child.start_byte:child.end_byte].decode(
+                        'utf8')
+                    if identifier in functions_left:
+                        functions_left.remove(identifier)
+        else:
+            for child in node.children:
+                recurse_on_node(child)
+
+    recurse_on_node(tree.root_node)
+
+    for function_name in set(required_functions):
+        if function_name in functions_left:
+            yield f'The function `{function_name}` must be defined.'
 
 
 def main():

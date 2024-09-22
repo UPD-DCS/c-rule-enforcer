@@ -1420,3 +1420,95 @@ void f() {
 
     for src in nonviolating_cases:
         assert not get_unique_rule_violations(src, rules)
+
+
+def test_require_functions_single():
+    rules = Rules.from_dict({'require_functions': ['g']})
+
+    violating_cases = [
+        b'''
+int main() {
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+int g() {
+    return 1;
+}
+''',
+        b'''
+int g() {
+    return 1;
+}
+
+int main() {
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_require_functions_multiple():
+    rules = Rules.from_dict({'require_functions': ['g', 'h']})
+
+    violating_cases = [
+        b'''
+int main() {
+}
+''',
+        b'''
+int g() {
+    return 1;
+}
+
+int main() {
+}
+''',
+        b'''
+int h() {
+    return 1;
+}
+
+int main() {
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+int g() {
+    return 1;
+}
+
+int h() {
+    return 1;
+}
+''',
+        b'''
+int g() {
+    return 1;
+}
+
+int h() {
+    return 1;
+}
+
+int main() {
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
