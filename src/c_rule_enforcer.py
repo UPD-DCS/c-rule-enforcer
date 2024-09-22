@@ -29,6 +29,7 @@ class Rules:
     - nonnumeric_defines
     - function_pointers
     - atypical_control_flow
+    - braceless_blocks
     """
     disallow: list[str] | None
     disallow_symbols: list[str] | None
@@ -140,6 +141,9 @@ def handle_disallow(src: bytes, tree: Tree, disallowed: list[str],
 
     if 'atypical_control_flow' in disallowed:
         yield from handle_disallow_atypical_control_flow(tree, src)
+
+    if 'braceless_blocks' in disallowed:
+        yield from handle_disallow_braceless_blocks(tree)
 
     # TODO
     if 'function_pointers' in disallowed:
@@ -290,7 +294,6 @@ def handle_disallow_dunders(tree: Tree, src: bytes) -> Generator[str, None, None
     yield from recurse_on_node(tree.root_node)
 
 
-
 def handle_disallow_symbols(tree: Tree, src: bytes,
                             disallowed_symbols: list[str]) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
@@ -431,6 +434,24 @@ def handle_disallow_atypical_control_flow(tree: Tree, src: bytes) -> Generator[s
                     if identifier == b'longjmp':
                         yield '`longjmp` is disallowed.'
                         break
+
+        for child in node.children:
+            yield from recurse_on_node(child)
+
+    yield from recurse_on_node(tree.root_node)
+
+
+def handle_disallow_braceless_blocks(tree: Tree) -> Generator[str, None, None]:
+    def recurse_on_node(node: Node) -> Generator[str, None, None]:
+        if node.type in {
+                'if_statement',
+                'else_clause',
+                'while_statement',
+                'do_statement',
+                'for_statement',
+        }:
+            if not [child for child in node.children if child.type == 'compound_statement']:
+                yield 'Blocks without enclosing braces are disallowed.'
 
         for child in node.children:
             yield from recurse_on_node(child)

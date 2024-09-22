@@ -396,7 +396,7 @@ def test_valid_disallow_helper_functions():
     })
 
     violating_cases = [
-       
+
         b'''
 void f() {
 }
@@ -1154,6 +1154,215 @@ int main() {
 ''',
         b'''
 void longjmp() {
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_disallow_braceless_blocks_if_else():
+    rules = Rules.from_dict({'disallow': ['braceless_blocks']})
+
+    violating_cases = [
+        b'''
+void f() {
+    if (1) printf("test\n");
+}
+''',
+        b'''
+void f() {
+    if (1)
+        printf("test\n");
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else
+        printf("test\n");
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+        if (1) printf("test\n");
+    } else {
+        printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else {
+        printf("test\n");
+        if (1) printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else {
+        printf("test\n");
+        if (1) {
+            if (1) printf("test\n");
+        }
+    }
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else {
+        printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+    } else {
+    }
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_disallow_braceless_blocks_while():
+    rules = Rules.from_dict({'disallow': ['braceless_blocks']})
+
+    violating_cases = [
+        b'''
+void f() {
+    while (1)
+        printf("\n");
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        while (1)
+            printf("\n");
+    }
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+void f() {
+    while (1) {
+        printf("\n");
+    }
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_disallow_braceless_blocks_do_while():
+    rules = Rules.from_dict({'disallow': ['braceless_blocks']})
+
+    violating_cases = [
+        b'''
+void f() {
+    do
+        printf("\n");
+    while (1);
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        do
+            printf("\n");
+        while (1);
+    }
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+void f() {
+    do {
+        printf("\n");
+    } while (1);
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_disallow_braceless_blocks_for():
+    rules = Rules.from_dict({'disallow': ['braceless_blocks']})
+
+    violating_cases = [
+        b'''
+void f() {
+    for (int i = 0; i < 10; i++)
+        printf("\n");
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        for (int i = 0; i < 10; i++)
+            printf("\n");
+    }
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+void f() {
+    for (int i = 0; i < 10; i++) {
+        printf("\n");
+    }
 }
 ''',
     ]
