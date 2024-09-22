@@ -28,6 +28,7 @@ class Rules:
     - arrays (excludes int *arr = {1, 2, 3})
     - nonnumeric_defines
     - function_pointers
+    - atypical_control_flow
     """
     disallow: list[str] | None
     disallow_symbols: list[str] | None
@@ -136,6 +137,9 @@ def handle_disallow(src: bytes, tree: Tree, disallowed: list[str],
 
     if 'nonnumeric_defines' in disallowed:
         yield from handle_disallow_nonnumeric_defines(tree, src)
+
+    if 'atypical_control_flow' in disallowed:
+        yield from handle_disallow_atypical_control_flow(tree, src)
 
     # TODO
     if 'function_pointers' in disallowed:
@@ -414,6 +418,26 @@ def handle_allow_includes(tree: Tree, src: bytes, allowed_includes: list[str],
     yield from recurse_on_node(tree.root_node)
 
 
+def handle_disallow_atypical_control_flow(tree: Tree, src: bytes) -> Generator[str, None, None]:
+    def recurse_on_node(node: Node) -> Generator[str, None, None]:
+        if node.type == 'goto_statement':
+            yield '`goto` is disallowed.'
+
+        if node.type == 'call_expression':
+            for child in node.children:
+                if child.type == 'identifier':
+                    identifier = src[child.start_byte:child.end_byte]
+
+                    if identifier == b'longjmp':
+                        yield '`longjmp` is disallowed.'
+                        break
+
+        for child in node.children:
+            yield from recurse_on_node(child)
+
+    yield from recurse_on_node(tree.root_node)
+
+
 def main():
     with open('test.c', 'rb') as f:
         src = f.read()
@@ -425,29 +449,5 @@ def main():
         # raise CompileError(msg)
 
 
-def main_explore() -> Generator[str, None, None]:
-    C_LANGUAGE = Language(tsc.language())
-    parser = Parser(C_LANGUAGE)
-
-    # with open('test.c', 'rb') as f:
-    # src = f.read()
-
-    src = b'''
-#include <stdio.h>
-#include "hello.h"
-'''
-
-    tree = parser.parse(src)
-
-    def recurse_on_node(node: Node, level: int) -> Generator[str, None, None]:
-        print(f'{"-" * (level * 2)}{node.type}')
-
-        for child in node.children:
-            yield from recurse_on_node(child, level + 1)
-
-    yield from recurse_on_node(tree.root_node, 0)
-
-
 if __name__ == '__main__':
-    print(*main_explore())
-    # main()
+    main()

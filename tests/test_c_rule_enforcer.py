@@ -1070,3 +1070,96 @@ void f() {
         pass
     else:
         assert False, f'Must raise AssertionError if `limit_defined_functions` and `require_functions` are inconsistent: {rules}'
+
+
+def test_disallow_atypical_control_flow_goto():
+    rules = Rules.from_dict({'disallow': ['atypical_control_flow']})
+
+    violating_cases = [
+        b'''
+int main() {
+my_label:
+  goto my_label;
+}
+''',
+        b'''
+int main() {
+  goto my_label;
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+int main() {
+  int goto = 1;
+}
+''',
+        b'''
+void goto() {
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
+
+
+def test_disallow_atypical_control_flow_longjmp():
+    rules = Rules.from_dict({'disallow': ['atypical_control_flow']})
+
+    violating_cases = [
+        b'''
+void f() {
+    longjmp(j, 1);
+}
+''',
+        b'''
+#include <stdio.h>
+#include <setjmp.h>
+
+jmp_buf j;
+
+void my_goto() {
+    printf("my_goto\n");
+    longjmp(j, 1);  // Must not return 0
+}
+
+int main() {
+    int i = 0;
+
+    if (!setjmp(j)) {
+        printf("setjmp 0 branch\n");
+        my_goto();
+    } else {
+        printf("setjmp 1 branch: %d\n", i);
+        i++;
+
+        if (i < 10) {
+            my_goto();
+        }
+    }
+}
+''',
+    ]
+
+    nonviolating_cases = [
+        b'''
+int main() {
+  int longjmp = 1;
+}
+''',
+        b'''
+void longjmp() {
+}
+''',
+    ]
+
+    for src in violating_cases:
+        assert get_unique_rule_violations(src, rules)
+
+    for src in nonviolating_cases:
+        assert not get_unique_rule_violations(src, rules)
