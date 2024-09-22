@@ -445,12 +445,19 @@ def handle_disallow_braceless_blocks(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type in {
                 'if_statement',
-                'else_clause',
                 'while_statement',
                 'do_statement',
                 'for_statement',
         }:
             if not [child for child in node.children if child.type == 'compound_statement']:
+                yield 'Blocks without enclosing braces are disallowed.'
+
+        # Special handling of `else` due to `else if` case
+        if node.type == 'else_clause':
+            if not [child for child in node.children if child.type in {
+                'compound_statement',
+                'if_statement',
+            }]:
                 yield 'Blocks without enclosing braces are disallowed.'
 
         for child in node.children:

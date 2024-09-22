@@ -1220,6 +1220,30 @@ void f() {
     }
 }
 ''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else if (0) {
+        printf("test\n");
+    } else if (0)
+        printf("test\n");
+    else {
+        printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else if (0)
+        printf("test\n");
+    else {
+        printf("test\n");
+    }
+}
+''',
     ]
 
     nonviolating_cases = [
@@ -1249,6 +1273,30 @@ void f() {
 void f() {
     if (1) {
     } else {
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else if (0) {
+        printf("test\n");
+    } else {
+        printf("test\n");
+    }
+}
+''',
+        b'''
+void f() {
+    if (1) {
+        printf("test\n");
+    } else if (0) {
+        printf("test\n");
+    } else if (0) {
+        printf("test\n");
+    } else {
+        printf("test\n");
     }
 }
 ''',
