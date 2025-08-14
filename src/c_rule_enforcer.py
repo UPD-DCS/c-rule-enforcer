@@ -342,7 +342,7 @@ def handle_limit_defined_functions(tree: Tree, limit: int) -> Generator[str, Non
 def handle_disallow_arrays(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type == 'array_declarator':
-            yield 'Arrays are disallowed.'
+            yield 'Array declarations are disallowed.'
 
         for child in node.children:
             yield from recurse_on_node(child)
