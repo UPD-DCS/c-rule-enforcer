@@ -63,10 +63,34 @@ Please try again.
 """
 
 
+class RuleViolation(str):
+    """A diagnostic string with an optional one-based submission line."""
+
+    lineno: int | None
+
+    def __new__(cls, message: str, lineno: int | None = None):
+        violation = super().__new__(cls, message)
+        violation.lineno = lineno
+        return violation
+
+
 def get_rule_violations_str(src: bytes, rules: Rules) -> str | None:
-    if violations := sorted(get_unique_rule_violations(src, rules)):
-        return ENFORCER_ERROR_TEMPLATE.format(
-            errors="\n".join(f'* {violation}' for violation in violations))
+    # Collect locations before deduplicating strings; equality intentionally
+    # remains compatible with the existing string-based helper APIs.
+    locations: dict[str, set[int]] = {}
+    for violation in get_rule_violations(src, rules):
+        lines = locations.setdefault(str(violation), set())
+        if isinstance(violation, RuleViolation) and violation.lineno is not None:
+            lines.add(violation.lineno)
+
+    if locations:
+        violations = []
+        for message, lines in sorted(locations.items()):
+            if lines:
+                label = 'line' if len(lines) == 1 else 'lines'
+                message += f' ({label} {", ".join(map(str, sorted(lines)))})'
+            violations.append(f'* {message}')
+        return ENFORCER_ERROR_TEMPLATE.format(errors='\n'.join(violations))
 
 
 def get_rule_violations(src: bytes, rules: Rules) -> Generator[str, None, None]:
@@ -166,7 +190,7 @@ def handle_disallow_main(tree: Tree, src: bytes) -> Generator[str, None, None]:
 
                     # Sourced checked is unmangled version; main has no UUID suffix
                     if identifier == b'main':
-                        yield 'Including a `main` function is disallowed.'
+                        yield RuleViolation('Including a `main` function is disallowed.', node.start_point.row + 1)
                         break
         else:
             for child in node.children:
@@ -178,7 +202,10 @@ def handle_disallow_main(tree: Tree, src: bytes) -> Generator[str, None, None]:
 def handle_disallow_assignment(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type in {'init_declarator', 'assignment_expression', '++', '--'}:
-            yield 'Assignment statements, incrementing, and decrementing are disallowed.'
+            yield RuleViolation(
+                'Assignment statements, incrementing, and decrementing are disallowed.',
+                node.start_point.row + 1,
+            )
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -189,7 +216,10 @@ def handle_disallow_assignment(tree: Tree) -> Generator[str, None, None]:
 def handle_disallow_reassignment(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type in {'assignment_expression', '++', '--'}:
-            yield 'Reassignment, incrementing, and decrementing are disallowed.'
+            yield RuleViolation(
+                'Reassignment, incrementing, and decrementing are disallowed.',
+                node.start_point.row + 1,
+            )
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -200,7 +230,7 @@ def handle_disallow_reassignment(tree: Tree) -> Generator[str, None, None]:
 def handle_disallow_loops(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type in {'for_statement', 'while_statement', 'do_statement'}:
-            yield 'Loops are disallowed.'
+            yield RuleViolation('Loops are disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -211,7 +241,7 @@ def handle_disallow_loops(tree: Tree) -> Generator[str, None, None]:
 def handle_disallow_if_statements(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type in {'if_statement', 'for_statement', 'while_statement', 'do_statement'}:
-            yield '`if` statements and loops are disallowed.'
+            yield RuleViolation('`if` statements and loops are disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -229,7 +259,7 @@ def handle_disallow_helper_functions(tree: Tree,
                     identifier = src[child.start_byte:child.end_byte]
 
                     if required_functions is None or identifier.decode('utf8') not in required_functions:
-                        yield 'Helper functions are disallowed.'
+                        yield RuleViolation('Helper functions are disallowed.', node.start_point.row + 1)
                         break
         else:
             for child in node.children:
@@ -253,7 +283,7 @@ def handle_disallow_printing(tree: Tree, src: bytes) -> Generator[str, None, Non
                             b'fputc',
                             b'putc',
                     }:
-                        yield 'Printing is disallowed.'
+                        yield RuleViolation('Printing is disallowed.', node.start_point.row + 1)
                         break
         else:
             for child in node.children:
@@ -279,7 +309,7 @@ def handle_disallow_direct_recursion(tree: Tree, src: bytes) -> Generator[str, N
                     called_function = src[child.start_byte:child.end_byte]
 
                     if called_function == inside_function:
-                        yield 'Direct recursion is not allowed.'
+                        yield RuleViolation('Direct recursion is not allowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child, inside_function)
@@ -293,7 +323,7 @@ def handle_disallow_dunders(tree: Tree, src: bytes) -> Generator[str, None, None
             symbol = src[node.start_byte:node.end_byte]
 
             if (s := symbol.decode('utf8')).startswith('__'):
-                yield f'`{s}` is disallowed.'
+                yield RuleViolation(f'`{s}` is disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -308,7 +338,7 @@ def handle_disallow_symbols(tree: Tree, src: bytes,
             symbol = src[node.start_byte:node.end_byte]
 
             if (s := symbol.decode('utf8')) in disallowed_symbols:
-                yield f'`{s}` is disallowed.'
+                yield RuleViolation(f'`{s}` is disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -342,7 +372,7 @@ def handle_limit_defined_functions(tree: Tree, limit: int) -> Generator[str, Non
 def handle_disallow_arrays(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type == 'array_declarator':
-            yield 'Array declarations are disallowed.'
+            yield RuleViolation('Array declarations are disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -353,13 +383,19 @@ def handle_disallow_arrays(tree: Tree) -> Generator[str, None, None]:
 def handle_disallow_nonnumeric_defines(tree: Tree, src: bytes) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type == 'preproc_function_def':
-            yield '`define` preprocessor directives for nonnumeric values are disallowed.'
+            yield RuleViolation(
+                '`define` preprocessor directives for nonnumeric values are disallowed.',
+                node.start_point.row + 1,
+            )
 
         elif node.type == 'preproc_arg':
             value = src[node.start_byte:node.end_byte]
 
             if not re.match(r'(\+|-)?\d+(\.\d*)?', value.decode('utf8')):
-                yield '`define` preprocessor directives for nonnumeric values are disallowed.'
+                yield RuleViolation(
+                    '`define` preprocessor directives for nonnumeric values are disallowed.',
+                    node.start_point.row + 1,
+                )
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -409,7 +445,7 @@ def handle_allow_includes(tree: Tree, src: bytes, allowed_includes: list[str],
 
             s = identifier.decode('utf8')
             if s not in allowed_includes and s not in required_includes:
-                yield f'Including {s} is disallowed.'
+                yield RuleViolation(f'Including {s} is disallowed.', node.start_point.row + 1)
 
         elif node.type == 'preproc_include':
             for child in node.children:
@@ -420,7 +456,7 @@ def handle_allow_includes(tree: Tree, src: bytes, allowed_includes: list[str],
 
                             s = identifier.decode('utf8')
                             if s not in allowed_includes and s not in required_includes:
-                                yield f'Including {s} is disallowed.'
+                                yield RuleViolation(f'Including {s} is disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -431,7 +467,7 @@ def handle_allow_includes(tree: Tree, src: bytes, allowed_includes: list[str],
 def handle_disallow_atypical_control_flow(tree: Tree, src: bytes) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type == 'goto_statement':
-            yield '`goto` is disallowed.'
+            yield RuleViolation('`goto` is disallowed.', node.start_point.row + 1)
 
         if node.type == 'call_expression':
             for child in node.children:
@@ -439,7 +475,7 @@ def handle_disallow_atypical_control_flow(tree: Tree, src: bytes) -> Generator[s
                     identifier = src[child.start_byte:child.end_byte]
 
                     if identifier == b'longjmp':
-                        yield '`longjmp` is disallowed.'
+                        yield RuleViolation('`longjmp` is disallowed.', node.start_point.row + 1)
                         break
 
         for child in node.children:
@@ -457,7 +493,7 @@ def handle_disallow_braceless_blocks(tree: Tree) -> Generator[str, None, None]:
                 'for_statement',
         }:
             if not [child for child in node.children if child.type == 'compound_statement']:
-                yield 'Blocks without enclosing braces are disallowed.'
+                yield RuleViolation('Blocks without enclosing braces are disallowed.', node.start_point.row + 1)
 
         # Special handling of `else` due to `else if` case
         if node.type == 'else_clause':
@@ -465,7 +501,7 @@ def handle_disallow_braceless_blocks(tree: Tree) -> Generator[str, None, None]:
                 'compound_statement',
                 'if_statement',
             }]:
-                yield 'Blocks without enclosing braces are disallowed.'
+                yield RuleViolation('Blocks without enclosing braces are disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
@@ -502,7 +538,7 @@ def handle_require_functions(tree: Tree, src: bytes,
 def handle_disallow_asm(tree: Tree) -> Generator[str, None, None]:
     def recurse_on_node(node: Node) -> Generator[str, None, None]:
         if node.type == 'gnu_asm_expression':
-            yield '`asm` is disallowed.'
+            yield RuleViolation('`asm` is disallowed.', node.start_point.row + 1)
 
         for child in node.children:
             yield from recurse_on_node(child)
